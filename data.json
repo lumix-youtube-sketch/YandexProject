@@ -1,0 +1,15 @@
+{
+  "users": {
+    "123123": {
+      "password_hash": "scrypt:32768:8:1$pSmnIUI71eXM9IIl$f49d44e86b78d504eeb8473ed1392cd280d9a06a8f8a202cc4ee0394ddd9f4f4c522fcf8e724ec1f0acd7cecf857fdf6de5584c75a3a872a6065b1b78e44c5e2",
+      "habits": [
+        {
+          "id": 20260422000000,
+          "name": "123123",
+          "color": "#1d1d1f",
+          "completions": []
+        }
+      ]
+    }
+  }
+}
