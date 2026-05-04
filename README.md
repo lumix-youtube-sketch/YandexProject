@@ -8,9 +8,7 @@
 
 - Python 3 / Flask
 - Flask-SQLAlchemy + SQLite
-- Werkzeug (хеширование паролей)
-- Jinja2, HTML, CSS, JavaScript
-- Внешний API цитат (forismatic)
+- Внешний API цитат
 
 ## Запуск
 
