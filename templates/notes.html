@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Livi{% endblock %}
+
+{% block head %}
+<style>
+  .section-label { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #adb5bd; }
+  .note-content { white-space: pre-wrap; font-size: .9rem; color: #495057; line-height: 1.6; max-height: 120px; overflow: hidden; position: relative; }
+  .note-content::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+    height: 40px; background: linear-gradient(transparent, #fff);
+  }
+  .note-card { transition: box-shadow .15s; }
+  .note-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1) !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:820px">
+
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 fw-bold mb-0">Заметки</h1>
+    <span class="text-muted small">{{ notes | length }} заметок</span>
+  </div>
+
+  {# форма добавления #}
+  <div class="card border-0 rounded-4 shadow-sm p-4 mb-4">
+    <form action="/notes/add" method="POST">
+      <div class="mb-3">
+        <label class="form-label fw-semibold small text-uppercase text-secondary mb-1">Заголовок</label>
+        <input class="form-control" type="text" name="title" placeholder="Название заметки..." required autocomplete="off">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold small text-uppercase text-secondary mb-1">Текст</label>
+        <textarea class="form-control" name="content" rows="3" placeholder="Напиши что-нибудь..."></textarea>
+      </div>
+      <button class="btn btn-dark" type="submit">Добавить заметку</button>
+    </form>
+  </div>
+
+  {% if notes %}
+  <div class="row g-3">
+    {% for note in notes %}
+      <div class="col-md-6">
+        <div class="card border-0 rounded-4 shadow-sm p-4 h-100 note-card">
+
+          <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
+            <h6 class="fw-bold mb-0 text-truncate">{{ note.title }}</h6>
+            <div class="d-flex gap-1 flex-shrink-0">
+              <a href="/notes/edit/{{ note.id }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+              <form action="/notes/delete/{{ note.id }}" method="POST" onsubmit="return confirm('Удалить заметку?')">
+                <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </div>
+
+          {% if note.content %}
+            <div class="note-content mb-3">{{ note.content }}</div>
+          {% else %}
+            <p class="text-muted small mb-3 fst-italic">Нет текста</p>
+          {% endif %}
+
+          <div class="mt-auto">
+            <span class="text-muted" style="font-size:.75rem">
+              <i class="bi bi-clock"></i> {{ note.updated_at.strftime('%d.%m.%Y %H:%M') }}
+            </span>
+          </div>
+
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+    <div class="text-center text-muted py-5">Добавь первую заметку</div>
+  {% endif %}
+
+</div>
+{% endblock %}

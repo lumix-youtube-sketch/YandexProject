@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Livi{% endblock %}
+{% block head %}
+<style>
+  .section-label { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #adb5bd; }
+  .task-item { transition: opacity .2s; }
+  .task-item.done-item { opacity: .55; }
+  .task-title-done { text-decoration: line-through; color: #adb5bd; }
+  .priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+  .priority-high  { background: #dc3545; }
+  .priority-medium { background: #fd7e14; }
+  .priority-low   { background: #198754; }
+  .progress { height: 6px; border-radius: 10px; }
+  .deadline-overdue { color: #dc3545; font-weight: 600; }
+  .deadline-soon    { color: #fd7e14; font-weight: 600; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:820px">
+  <div class="d-flex align-items-center justify-content-between mb-4 gap-2 flex-wrap">
+    <h1 class="h3 fw-bold mb-0">Задачи</h1>
+    {% if total > 0 %}
+    {% set percent = (done_count / total * 100) | int %}
+    <div class="d-flex align-items-center gap-2" style="min-width:160px">
+      <div class="progress flex-grow-1" style="min-width:100px">
+        <div class="progress-bar bg-dark" style="width:{{ percent }}%"></div>
+      </div>
+      <span class="text-muted small text-nowrap">{{ done_count }}/{{ total }}</span>
+    </div>
+    {% endif %}
+  </div>
+  <div class="card border-0 rounded-4 shadow-sm p-4 mb-4">
+    <form action="/tasks/add" method="POST">
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-5">
+          <label class="form-label fw-semibold small text-uppercase text-secondary mb-1">Задача</label>
+          <input class="form-control" type="text" name="title" placeholder="Что нужно сделать..." required autocomplete="off">
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label fw-semibold small text-uppercase text-secondary mb-1">Приоритет</label>
+          <select class="form-select" name="priority">
+            <option value="high">Высокий</option>
+            <option value="medium" selected>Средний</option>
+            <option value="low">Низкий</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label fw-semibold small text-uppercase text-secondary mb-1">Дедлайн</label>
+          <input class="form-control" type="date" name="deadline">
+        </div>
+        <div class="col-12 col-md-1 d-flex align-items-end">
+          <button class="btn btn-dark w-100" type="submit">+</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  {# фильтры #}
+  <div class="d-flex gap-2 mb-3 flex-wrap">
+
+    {% if filter_by == 'all' %}
+      <a href="/tasks?filter=all" class="btn btn-sm btn-dark">Все</a>
+    {% else %}
+      <a href="/tasks?filter=all" class="btn btn-sm btn-outline-secondary">Все</a>
+    {% endif %}
+
+    {% if filter_by == 'active' %}
+      <a href="/tasks?filter=active" class="btn btn-sm btn-dark">Активные</a>
+    {% else %}
+      <a href="/tasks?filter=active" class="btn btn-sm btn-outline-secondary">Активные</a>
+    {% endif %}
+
+    {% if filter_by == 'done' %}
+      <a href="/tasks?filter=done" class="btn btn-sm btn-dark">Выполненные</a>
+    {% else %}
+      <a href="/tasks?filter=done" class="btn btn-sm btn-outline-secondary">Выполненные</a>
+    {% endif %}
+
+  </div>
+
+  {% if tasks %}
+  <div class="d-flex flex-column gap-2">
+
+    {% for task in tasks %}
+    {% set overdue = task.is_overdue() %}
+
+    <div class="card border-0 rounded-3 shadow-sm px-4 py-3 task-item {% if task.done %}done-item{% endif %} {% if overdue %}border-start border-danger border-3{% endif %}">
+      <div class="d-flex align-items-start gap-3">
+        <div class="priority-dot priority-{{ task.priority }} mt-1"></div>
+        <div class="flex-grow-1">
+          {% if task.done %}
+            <span class="fw-semibold task-title-done">{{ task.title }}</span>
+          {% else %}
+            <span class="fw-semibold">{{ task.title }}</span>
+          {% endif %}
+          <div class="d-flex gap-2 mt-1 flex-wrap align-items-center">
+            {% if task.priority == 'high' %}
+              <span class="badge text-bg-danger">Высокий</span>
+            {% elif task.priority == 'medium' %}
+              <span class="badge text-bg-warning text-dark">Средний</span>
+            {% else %}
+              <span class="badge text-bg-success">Низкий</span>
+            {% endif %}
+            {% if task.deadline %}
+              {% set days_left = (task.deadline - today).days %}
+
+              {% if overdue %}
+                {% set deadline_class = 'deadline-overdue' %}
+              {% elif days_left <= 2 %}
+                {% set deadline_class = 'deadline-soon' %}
+              {% else %}
+                {% set deadline_class = 'text-muted' %}
+              {% endif %}
+              <span class="small {{ deadline_class }}">
+                <i class="bi bi-calendar3"></i>
+                {% if overdue %}
+                  Просрочено {{ task.deadline.strftime('%d.%m.%Y') }}
+                {% elif days_left == 0 %}
+                  Сегодня
+                {% elif days_left == 1 %}
+                  Завтра
+                {% else %}
+                  {{ task.deadline.strftime('%d.%m.%Y') }}
+                {% endif %}
+              </span>
+            {% endif %}
+
+            <span class="text-muted" style="font-size:.75rem">{{ task.created_at.strftime('%d.%m.%Y') }}</span>
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-shrink-0">
+          <form action="/tasks/toggle/{{ task.id }}" method="POST">
+            <input type="hidden" name="filter" value="{{ filter_by }}">
+            {% if task.done %}
+              <button class="btn btn-sm btn-outline-secondary" type="submit">
+                <i class="bi bi-arrow-counterclockwise"></i>
+              </button>
+            {% else %}
+              <button class="btn btn-sm btn-outline-dark" type="submit">
+                <i class="bi bi-check-lg"></i>
+              </button>
+            {% endif %}
+          </form>
+
+          <form action="/tasks/delete/{{ task.id }}" method="POST" onsubmit="return confirm('Удалить задачу?')">
+            <input type="hidden" name="filter" value="{{ filter_by }}">
+            <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center text-muted py-5">
+    {% if filter_by == 'done' %}
+      Нет выполненных задач
+    {% elif filter_by == 'active' %}
+      Все задачи выполнены!
+    {% else %}
+      Добавь первую задачу
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

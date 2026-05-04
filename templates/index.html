@@ -1,487 +1,354 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Трекер привычек</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+{% extends "base.html" %}
+{% block title %}Livi{% endblock %}
 
-    body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: #f5f5f7;
-      color: #1d1d1f;
-      min-height: 100vh;
-      padding: 40px 16px 60px;
-    }
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-    .container { max-width: 760px; margin: 0 auto; }
+<style>
+  .color-wrap {
+    position: relative; width: 42px; height: 42px;
+    border-radius: 8px; overflow: hidden;
+    border: 1px solid #dee2e6; cursor: pointer; flex-shrink: 0;
+  }
+  .color-wrap input[type="color"] {
+    position: absolute; inset: -4px;
+    width: calc(100% + 8px); height: calc(100% + 8px);
+    border: none; cursor: pointer; padding: 0;
+  }
+  .section-label {
+    font-size: .7rem; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; color: #adb5bd;
+  }
+  .habit-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .day-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .day-label { font-size: .6rem; color: #adb5bd; font-weight: 600; text-transform: uppercase; }
+  .day-btn {
+    width: 34px; height: 34px; border-radius: 8px;
+    border: 1.5px solid #dee2e6; background: #f8f9fa;
+    cursor: pointer; transition: all .15s; position: relative;
+  }
+  .day-btn.today-marker { border-color: #212529; }
+  .day-btn.done { border-color: transparent; }
+  .day-btn.done::after {
+    content: '✓'; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .8rem; color: #fff; font-weight: 700;
+  }
+  .day-btn:hover:not(.done) { border-color: #212529; background: #e9ecef; }
+  .delete-btn {
+    background: none; border: none; color: #adb5bd;
+    font-size: .9rem; cursor: pointer; padding: 4px 6px;
+    border-radius: 6px; line-height: 1; transition: color .2s;
+  }
+  .delete-btn:hover { color: #dc3545; }
+  .chart-wrap { position: relative; height: 180px; }
+  .chart-wrap.tall { height: 220px; }
+  .quote-card { background: #212529; color: #fff; }
+</style>
+{% endblock %}
 
-    /* Header */
-    header { margin-bottom: 40px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-    .header-text h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      color: #1d1d1f;
-    }
-    .header-text p { color: #86868b; font-size: 0.9rem; margin-top: 4px; }
-    .logout-btn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: none;
-      border: 1.5px solid #e5e5ea;
-      border-radius: 10px;
-      padding: 8px 14px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #86868b;
-      cursor: pointer;
-      text-decoration: none;
-      white-space: nowrap;
-      transition: border-color .2s, color .2s;
-      flex-shrink: 0;
-      margin-top: 4px;
-    }
-    .logout-btn:hover { border-color: #1d1d1f; color: #1d1d1f; }
+{% block content %}
+<div class="container py-5" style="max-width:820px">
 
-    /* Add form */
-    .add-form {
-      background: #fff;
-      border-radius: 16px;
-      padding: 20px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      margin-bottom: 32px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.06);
-      flex-wrap: wrap;
-    }
+  {# цитата #}
+  <div class="card border-0 rounded-4 p-4 mb-4 quote-card">
+    <p class="fst-italic mb-1" style="font-size:.95rem">{{ quote.text }}</p>
+    {% if quote.author %}
+      <small class="text-secondary">— {{ quote.author }}</small>
+    {% endif %}
+  </div>
 
-    .add-form input[type="text"] {
-      flex: 1;
-      min-width: 160px;
-      border: 1.5px solid #e5e5ea;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-size: 0.95rem;
-      color: #1d1d1f;
-      outline: none;
-      transition: border-color .2s;
-      background: #fafafa;
-    }
-    .add-form input[type="text"]::placeholder { color: #b0b0b8; }
-    .add-form input[type="text"]:focus { border-color: #1d1d1f; background: #fff; }
-
-    .color-wrap {
-      position: relative;
-      width: 42px; height: 42px;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1.5px solid #e5e5ea;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-    .color-wrap input[type="color"] {
-      position: absolute;
-      inset: -4px;
-      width: calc(100% + 8px);
-      height: calc(100% + 8px);
-      border: none;
-      cursor: pointer;
-      padding: 0;
-    }
-
-    .add-form button {
-      background: #1d1d1f;
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 22px;
-      font-size: 0.92rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity .2s;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .add-form button:hover { opacity: .75; }
-
-    /* Section title */
-    .section-title {
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      color: #86868b;
-      margin-bottom: 12px;
-    }
-
-    /* Habit card */
-    .habit-card {
-      background: #fff;
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 12px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.06);
-    }
-
-    .habit-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-      gap: 12px;
-    }
-
-    .habit-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
-
-    .habit-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .habit-name {
-      font-size: 1rem;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .badges { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-
-    .badge {
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 20px;
-      border: 1.5px solid #e5e5ea;
-      color: #1d1d1f;
-      white-space: nowrap;
-    }
-
-    .delete-btn {
-      background: none;
-      border: none;
-      color: #c7c7cc;
-      font-size: 1rem;
-      cursor: pointer;
-      padding: 4px 6px;
-      border-radius: 6px;
-      transition: color .2s;
-      line-height: 1;
-    }
-    .delete-btn:hover { color: #ff3b30; }
-
-    /* Days */
-    .days-grid {
-      display: flex;
-      gap: 6px;
-      justify-content: flex-end;
-      flex-wrap: wrap;
-    }
-
-    .day-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-
-    .day-label {
-      font-size: 0.6rem;
-      color: #b0b0b8;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .day-btn {
-      width: 34px; height: 34px;
-      border-radius: 9px;
-      border: 1.5px solid #e5e5ea;
-      background: #fafafa;
-      cursor: pointer;
-      transition: all .15s;
-      position: relative;
-    }
-
-    .day-btn.today-marker { border-color: #1d1d1f; }
-
-    .day-btn.done {
-      border-color: transparent;
-    }
-    .day-btn.done::after {
-      content: '✓';
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.8rem;
-      color: #fff;
-      font-weight: 700;
-    }
-
-    .day-btn:hover:not(.done) { border-color: #1d1d1f; background: #f0f0f2; }
-
-    /* Charts section */
-    .charts-section { margin-top: 40px; }
-
-    .charts-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    @media (max-width: 520px) {
-      .charts-grid { grid-template-columns: 1fr; }
-    }
-
-    .chart-card {
-      background: #fff;
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.06);
-    }
-
-    .chart-card.full { grid-column: 1 / -1; }
-
-    .chart-title {
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: #86868b;
-      margin-bottom: 16px;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-    }
-
-    .chart-wrap { position: relative; height: 180px; }
-    .chart-wrap.tall { height: 220px; }
-
-    /* Empty state */
-    .empty-state {
-      text-align: center;
-      color: #b0b0b8;
-      padding: 56px 0;
-      font-size: 0.9rem;
-    }
-
-  </style>
-</head>
-<body>
-<div class="container">
-  <header>
-    <div class="header-text">
-      <h1>Трекер привычек</h1>
-      <p>Привет, {{ username }}! Отмечай выполненные привычки каждый день</p>
-    </div>
-    <a class="logout-btn" href="/logout">Выйти</a>
-  </header>
-
-  <form class="add-form" action="/add" method="POST">
-    <input type="text" name="name" placeholder="Новая привычка..." required autocomplete="off">
+  {# плеер если есть музыка #}
+  {% if user.music_filename %}
+  <div class="card border-0 rounded-3 shadow-sm p-3 mb-4 d-flex flex-row align-items-center gap-3">
+    <span class="text-muted small fw-semibold text-nowrap"><i class="bi bi-music-note-beamed"></i> Музыка</span>
+    <audio controls class="w-100" style="height:32px;accent-color:#212529">
+      <source src="/static/uploads/{{ user.music_filename }}">
+    </audio>
+  </div>
+  {% endif %}
+  {# форма добавления привычки #}
+  <form action="/add" method="POST" class="card border-0 rounded-4 shadow-sm p-3 mb-4 d-flex flex-row flex-wrap align-items-center gap-2">
+    <input type="text" name="name" class="form-control flex-grow-1" style="min-width:160px" placeholder="Новая привычка..." required autocomplete="off">
     <div class="color-wrap">
-      <input type="color" name="color" value="#1d1d1f">
+      <input type="color" name="color" value="#212529">
     </div>
-    <button type="submit">Добавить</button>
+    <button class="btn btn-dark" type="submit">Добавить</button>
   </form>
 
   {% if habits %}
-  <p class="section-title">Привычки — последние 7 дней</p>
+  <p class="section-label mb-2">Привычки — последние 7 дней</p>
 
   {% for habit in habits %}
-  <div class="habit-card">
-    <div class="habit-header">
-      <div class="habit-info">
+  <div class="card border-0 rounded-4 shadow-sm p-4 mb-3">
+
+    <div class="d-flex align-items-center justify-content-between mb-3 gap-2">
+      <div class="d-flex align-items-center gap-2 overflow-hidden">
         <div class="habit-dot" style="background:{{ habit.color }}"></div>
-        <span class="habit-name">{{ habit.name }}</span>
+        <span class="fw-semibold text-truncate">{{ habit.name }}</span>
       </div>
-      <div class="badges">
-        <span class="badge" id="streak-{{ habit.id }}">{{ habit.completions | length }} дней</span>
+
+      <div class="d-flex align-items-center gap-2 flex-shrink-0">
+        <span class="badge rounded-pill border text-dark bg-white fw-semibold" id="streak-{{ habit.id }}">
+          {{ habit.streak() }} дней
+        </span>
         <form action="/delete/{{ habit.id }}" method="POST" style="display:inline" onsubmit="return confirm('Удалить привычку?')">
           <button class="delete-btn" type="submit">✕</button>
         </form>
       </div>
     </div>
-    <div class="days-grid">
+
+    {# 7 кнопок-квадратиков по дням #}
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
       {% for day in days %}
-      {% set done = day in habit.completions %}
-      <div class="day-cell">
-        <span class="day-label">{{ day[8:] }}/{{ day[5:7] }}</span>
-        <button
-          class="day-btn {% if done %}done{% endif %} {% if day == today %}today-marker{% endif %}"
-          id="btn-{{ habit.id }}-{{ day }}"
-          style="{% if done %}background:{{ habit.color }};{% endif %}"
-          data-habit="{{ habit.id }}"
-          data-day="{{ day }}"
-          data-color="{{ habit.color }}"
-          onclick="toggle(this)"
-        ></button>
-      </div>
+        {% set done = day in habit.completion_dates() %}
+
+        <div class="day-cell">
+          <span class="day-label">{{ day[8:] }}/{{ day[5:7] }}</span>
+          <button
+            class="day-btn {% if done %}done{% endif %} {% if day == today %}today-marker{% endif %}"
+            id="btn-{{ habit.id }}-{{ day }}"
+            {% if done %}style="background:{{ habit.color }};"{% endif %}
+            data-habit="{{ habit.id }}"
+            data-day="{{ day }}"
+            data-color="{{ habit.color }}"
+            onclick="toggle(this)"
+          ></button>
+        </div>
       {% endfor %}
     </div>
+
   </div>
   {% endfor %}
 
-  <div class="charts-section">
-    <p class="section-title">Статистика</p>
-    <div class="charts-grid">
+  <p class="section-label mt-5 mb-3">Статистика</p>
+  <div class="row g-3">
 
-      <div class="chart-card full">
-        <div class="chart-title">Выполнение за последние 7 дней</div>
-        <div class="chart-wrap tall">
-          <canvas id="chartWeek"></canvas>
-        </div>
+    <div class="col-12">
+      <div class="card border-0 rounded-4 shadow-sm p-4">
+        <p class="section-label mb-3">Выполнение за последние 7 дней</p>
+        <div class="chart-wrap tall"><canvas id="chartWeek"></canvas></div>
       </div>
-
-      <div class="chart-card">
-        <div class="chart-title">Всего выполнений</div>
-        <div class="chart-wrap">
-          <canvas id="chartTotal"></canvas>
-        </div>
-      </div>
-
-      <div class="chart-card">
-        <div class="chart-title">Процент выполнения (7 дней)</div>
-        <div class="chart-wrap">
-          <canvas id="chartPercent"></canvas>
-        </div>
-      </div>
-
     </div>
+
+    <div class="col-md-6">
+      <div class="card border-0 rounded-4 shadow-sm p-4">
+        <p class="section-label mb-3">Всего выполнений</p>
+        <div class="chart-wrap"><canvas id="chartTotal"></canvas></div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card border-0 rounded-4 shadow-sm p-4">
+        <p class="section-label mb-3">Процент выполнения (7 дней)</p>
+        <div class="chart-wrap"><canvas id="chartPercent"></canvas></div>
+      </div>
+    </div>
+
   </div>
-
-  <script>
-    const habitsData = {{ habits | tojson }};
-    const days = {{ days | tojson }};
-
-    const dayTotals = days.map(d => {
-      return habitsData.filter(h => h.completions.includes(d)).length;
-    });
-
-    const dayLabels = days.map(d => {
-      const [y, m, day] = d.split('-');
-      return day + '/' + m;
-    });
-
-    new Chart(document.getElementById('chartWeek'), {
-      type: 'bar',
-      data: {
-        labels: dayLabels,
-        datasets: [{
-          data: dayTotals,
-          backgroundColor: dayLabels.map((_, i) => i === days.length - 1 ? '#1d1d1f' : '#e5e5ea'),
-          borderRadius: 8,
-          borderSkipped: false,
-        }]
-      },
-      options: {
-        plugins: { legend: { display: false } },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: { stepSize: 1, color: '#86868b', font: { size: 11 } },
-            grid: { color: '#f0f0f2' },
-            border: { display: false },
-          },
-          x: {
-            ticks: { color: '#86868b', font: { size: 11 } },
-            grid: { display: false },
-            border: { display: false },
-          }
-        }
-      }
-    });
-
-    new Chart(document.getElementById('chartTotal'), {
-      type: 'doughnut',
-      data: {
-        labels: habitsData.map(h => h.name),
-        datasets: [{
-          data: habitsData.map(h => h.completions.length),
-          backgroundColor: habitsData.map(h => h.color),
-          borderWidth: 0,
-          hoverOffset: 6,
-        }]
-      },
-      options: {
-        cutout: '65%',
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { boxWidth: 10, boxHeight: 10, padding: 12, color: '#1d1d1f', font: { size: 11 } }
-          }
-        }
-      }
-    });
-
-    const pctData = habitsData.map(h => {
-      const done = days.filter(d => h.completions.includes(d)).length;
-      return Math.round(done / 7 * 100);
-    });
-
-    new Chart(document.getElementById('chartPercent'), {
-      type: 'bar',
-      data: {
-        labels: habitsData.map(h => h.name.length > 10 ? h.name.slice(0, 10) + '…' : h.name),
-        datasets: [{
-          data: pctData,
-          backgroundColor: habitsData.map(h => h.color),
-          borderRadius: 8,
-          borderSkipped: false,
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        plugins: { legend: { display: false } },
-        scales: {
-          x: {
-            beginAtZero: true,
-            max: 100,
-            ticks: { callback: v => v + '%', color: '#86868b', font: { size: 11 } },
-            grid: { color: '#f0f0f2' },
-            border: { display: false },
-          },
-          y: {
-            ticks: { color: '#86868b', font: { size: 11 } },
-            grid: { display: false },
-            border: { display: false },
-          }
-        }
-      }
-    });
-  </script>
 
   {% else %}
-  <div class="empty-state">
-    Добавь первую привычку, чтобы начать отслеживание
-  </div>
+  <div class="text-center text-muted py-5">Добавь первую привычку, чтобы начать отслеживание</div>
   {% endif %}
+
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
-async function toggle(btn) {
-  const habitId = parseInt(btn.dataset.habit);
-  const day = btn.dataset.day;
-  const color = btn.dataset.color;
+// клик по квадратику — ставим/убираем отметку
+function toggle(btn) {
+  var habitId = parseInt(btn.dataset.habit);
+  var day = btn.dataset.day;
+  var color = btn.dataset.color;
 
-  const res = await fetch('/toggle', {
+  var requestData = {habit_id: habitId, day: day};
+
+  fetch('/toggle', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ habit_id: habitId, day })
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(requestData)
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data) {
+    if (data.done == true) {
+      btn.classList.add('done');
+      btn.style.background = color;
+    } else {
+      btn.classList.remove('done');
+      btn.style.background = '';
+    }
+
+    // обновляем стрик
+    var badge = document.getElementById('streak-' + habitId);
+    if (badge) {
+      badge.textContent = data.streak + ' дней';
+    }
   });
-
-  const data = await res.json();
-  if (data.done) {
-    btn.classList.add('done');
-    btn.style.background = color;
-  } else {
-    btn.classList.remove('done');
-    btn.style.background = '';
-  }
-
-  const badge = document.getElementById('streak-' + habitId);
-  if (badge) badge.textContent = data.streak + ' дней';
 }
 </script>
-</body>
-</html>
+
+{% if habits %}
+<script>
+  var habitsData = {{ habits_json | tojson }};
+  var days = {{ days | tojson }};
+
+  // считаем сколько привычек выполнено в каждый день
+  var dayTotals = [];
+  for (var i = 0; i < days.length; i++) {
+    var d = days[i];
+    var count = 0;
+    for (var j = 0; j < habitsData.length; j++) {
+      if (habitsData[j].completions.indexOf(d) != -1) {
+        count = count + 1;
+      }
+    }
+    dayTotals.push(count);
+  }
+
+  // подписи дней
+  var dayLabels = [];
+  for (var i = 0; i < days.length; i++) {
+    var parts = days[i].split('-');
+    dayLabels.push(parts[2] + '/' + parts[1]);
+  }
+
+  // последний столбик чёрный (сегодня), остальные серые
+  var weekColors = [];
+  for (var i = 0; i < dayLabels.length; i++) {
+    if (i == days.length - 1) {
+      weekColors.push('#212529');
+    } else {
+      weekColors.push('#dee2e6');
+    }
+  }
+
+  // график по дням
+  new Chart(document.getElementById('chartWeek'), {
+    type: 'bar',
+    data: {
+      labels: dayLabels,
+      datasets: [{
+        data: dayTotals,
+        backgroundColor: weekColors,
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1, color: '#adb5bd', font: { size: 11 } },
+          grid: { color: '#f0f0f2' },
+          border: { display: false }
+        },
+        x: {
+          ticks: { color: '#adb5bd', font: { size: 11 } },
+          grid: { display: false },
+          border: { display: false }
+        }
+      }
+    }
+  });
+
+  // данные для кольцевой
+  var totalLabels = [];
+  var totalCounts = [];
+  var totalColors = [];
+
+  for (var i = 0; i < habitsData.length; i++) {
+    var h = habitsData[i];
+    totalLabels.push(h.name);
+    totalCounts.push(h.completions.length);
+    totalColors.push(h.color);
+  }
+
+  new Chart(document.getElementById('chartTotal'), {
+    type: 'doughnut',
+    data: {
+      labels: totalLabels,
+      datasets: [{
+        data: totalCounts,
+        backgroundColor: totalColors,
+        borderWidth: 0,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      cutout: '65%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 10, boxHeight: 10, padding: 12, color: '#212529', font: { size: 11 } }
+        }
+      }
+    }
+  });
+
+  // проценты выполнения за 7 дней
+  var pctData = [];
+  var pctLabels = [];
+  var pctColors = [];
+
+  for (var i = 0; i < habitsData.length; i++) {
+    var h = habitsData[i];
+
+    var doneCount = 0;
+    for (var j = 0; j < days.length; j++) {
+      if (h.completions.indexOf(days[j]) != -1) {
+        doneCount = doneCount + 1;
+      }
+    }
+
+    var percent = Math.round(doneCount / 7 * 100);
+    pctData.push(percent);
+
+    // обрезаем длинные названия
+    var name = h.name;
+    if (name.length > 10) {
+      name = name.slice(0, 10) + '…';
+    }
+    pctLabels.push(name);
+
+    pctColors.push(h.color);
+  }
+
+  new Chart(document.getElementById('chartPercent'), {
+    type: 'bar',
+    data: {
+      labels: pctLabels,
+      datasets: [{
+        data: pctData,
+        backgroundColor: pctColors,
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            callback: function(v) { return v + '%'; },
+            color: '#adb5bd',
+            font: { size: 11 }
+          },
+          grid: { color: '#f0f0f2' },
+          border: { display: false }
+        },
+        y: {
+          ticks: { color: '#adb5bd', font: { size: 11 } },
+          grid: { display: false },
+          border: { display: false }
+        }
+      }
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Livi{% endblock %}
+
+{% block head %}
+<style>
+  .avatar-preview { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #dee2e6; }
+  .avatar-placeholder {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: #e9ecef; display: flex; align-items: center;
+    justify-content: center; font-size: 1.8rem; font-weight: 700; color: #6c757d;
+  }
+  .section-label { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #adb5bd; }
+  .stat-value { font-size: 1.6rem; font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:820px">
+  <h1 class="h3 fw-bold mb-4">Профиль</h1>
+  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+  {% if success %}<div class="alert alert-success">{{ success }}</div>{% endif %}
+  <div class="row g-4">
+    {# аватар #}
+    <div class="col-md-6">
+      <div class="card border-0 rounded-4 shadow-sm p-4 h-100">
+        <p class="section-label mb-3">Аватар</p>
+
+        {% if user.avatar_filename %}
+          <img class="avatar-preview mb-3" src="/static/uploads/{{ user.avatar_filename }}?v={{ user.id }}" alt="avatar">
+        {% else %}
+          <div class="avatar-placeholder mb-3">{{ user.username[0].upper() }}</div>
+        {% endif %}
+        <form method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="action" value="avatar">
+          <label class="form-label fw-semibold small text-uppercase text-secondary">Загрузить фото</label>
+          <input class="form-control form-control-sm mb-3" type="file" name="avatar" accept="image/*">
+          <button class="btn btn-dark btn-sm" type="submit">Сохранить</button>
+        </form>
+      </div>
+    </div>
+    {# музыка #}
+    <div class="col-md-6">
+      <div class="card border-0 rounded-4 shadow-sm p-4 h-100">
+        <p class="section-label mb-3">Фоновая музыка</p>
+        {% if user.music_filename %}
+          <audio controls class="w-100 mb-3" style="accent-color:#212529">
+            <source src="/static/uploads/{{ user.music_filename }}">
+          </audio>
+          <form method="POST" class="mb-3">
+            <input type="hidden" name="action" value="delete_music">
+            <button class="btn btn-outline-danger btn-sm" type="submit">Удалить музыку</button>
+          </form>
+        {% else %}
+          <p class="text-muted small mb-3">Музыка не загружена</p>
+        {% endif %}
+        <form method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="action" value="music">
+          <label class="form-label fw-semibold small text-uppercase text-secondary">Загрузить файл</label>
+          <input class="form-control form-control-sm mb-3" type="file" name="music" accept="audio/*">
+          <button class="btn btn-dark btn-sm" type="submit">Сохранить</button>
+        </form>
+      </div>
+    </div>
+    {# статистика #}
+    <div class="col-md-6">
+      <div class="card border-0 rounded-4 shadow-sm p-4 h-100">
+        <p class="section-label mb-3">Статистика</p>
+        <div class="d-flex gap-4 flex-wrap">
+          <div>
+            <div class="stat-value">{{ user.habits | length }}</div>
+            <div class="text-muted small">Привычек</div>
+          </div>
+          <div>
+            <div class="stat-value">{{ total_completions }}</div>
+            <div class="text-muted small">Всего выполнений</div>
+          </div>
+          <div>
+            <div class="stat-value" style="font-size:1rem;padding-top:.3rem">{{ user.created_at.strftime('%d.%m.%Y') }}</div>
+            <div class="text-muted small">Дата регистрации</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {# смена пароля #}
+    <div class="col-md-6">
+      <div class="card border-0 rounded-4 shadow-sm p-4 h-100">
+        <p class="section-label mb-3">Изменить пароль</p>
+        <form method="POST">
+          <input type="hidden" name="action" value="password">
+          <div class="mb-3">
+            <label class="form-label fw-semibold small text-uppercase text-secondary">Текущий пароль</label>
+            <input class="form-control form-control-sm" type="password" name="current_password" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small text-uppercase text-secondary">Новый пароль</label>
+            <input class="form-control form-control-sm" type="password" name="new_password" required minlength="4">
+            <div class="form-text">Минимум 4 символа</div>
+          </div>
+          <button class="btn btn-dark btn-sm" type="submit">Изменить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

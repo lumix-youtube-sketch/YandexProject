@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Livi{% endblock %}</title>
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    body { background: #f5f5f7; }
+    .navbar { backdrop-filter: blur(12px); background: rgba(255,255,255,.9) !important; border-bottom: 1px solid #e5e5ea; }
+    .navbar-brand { font-weight: 700; color: #1d1d1f !important; }
+    .nav-link { color: #6c757d !important; font-weight: 500; }
+    .nav-link:hover, .nav-link.active { color: #1d1d1f !important; }
+    .nav-avatar { width:32px; height:32px; border-radius:50%; object-fit: cover; border: 2px solid #dee2e6; }
+    .nav-avatar-placeholder {
+      width: 32px; height: 32px; border-radius: 50%; background: #dee2e6;
+      display:flex; align-items:center; justify-content:center;
+      font-size: .75rem; font-weight: 700; color: #6c757d;
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% if session.user_id %}
+<nav class="navbar navbar-expand sticky-top">
+  <div class="container" style="max-width:820px">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+      <img src="/static/logo.png" alt="logo" style="width:48px;height:48px;object-fit:contain;">
+      <span>Livi</span>
+    </a>
+
+    <div class="navbar-nav ms-auto flex-row align-items-center gap-2">
+
+      <a class="nav-link {% if request.endpoint == 'index' %}active fw-semibold{% endif %}" href="/">Привычки</a>
+      <a class="nav-link {% if request.endpoint == 'tasks' %}active fw-semibold{% endif %}" href="/tasks">Задачи</a>
+      {# заметки активны и в списке и в редактировании #}
+      <a class="nav-link {% if request.endpoint == 'notes' or request.endpoint == 'edit_note' %}active fw-semibold{% endif %}" href="/notes">Заметки</a>
+      <a class="nav-link {% if request.endpoint == 'profile' %}active fw-semibold{% endif %}" href="/profile">Профиль</a>
+      {# аватар или кружок с буквой #}
+      <a href="/profile" class="d-flex">
+        {% if user and user.avatar_filename %}
+          <img class="nav-avatar" src="/static/uploads/{{ user.avatar_filename }}?v={{ user.id }}" alt="avatar">
+        {% else %}
+          <div class="nav-avatar-placeholder">
+            {% if user %}{{ user.username[0].upper() }}{% else %}?{% endif %}
+          </div>
+        {% endif %}
+      </a>
+
+      <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i></a>
+    </div>
+  </div>
+</nav>
+{% endif %}
+{% block content %}{% endblock %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

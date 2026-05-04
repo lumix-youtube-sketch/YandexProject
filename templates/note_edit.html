@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Редактировать заметку — Трекер привычек{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:620px">
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="/notes" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+    <h1 class="h3 fw-bold mb-0">Редактировать заметку</h1>
+  </div>
+  <div class="card border-0 rounded-4 shadow-sm p-4">
+    <form action="/notes/edit/{{ note.id }}" method="POST">
+      <div class="mb-3">
+        <label class="form-label fw-semibold small text-uppercase text-secondary mb-1">Заголовок</label>
+        <input class="form-control" type="text" name="title" value="{{ note.title }}" required>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold small text-uppercase text-secondary mb-1">Текст</label>
+        <textarea class="form-control" name="content" rows="10">{{ note.content }}</textarea>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-dark" type="submit">Сохранить</button>
+        <a href="/notes" class="btn btn-outline-secondary">Отмена</a>
+      </div>
+    </form>
+  </div>
+  <p class="text-muted small mt-3">
+    Создана: {{ note.created_at.strftime('%d.%m.%Y %H:%M') }} &nbsp;·&nbsp;
+    Изменена: {{ note.updated_at.strftime('%d.%m.%Y %H:%M') }}
+  </p>
+</div>
+{% endblock %}
