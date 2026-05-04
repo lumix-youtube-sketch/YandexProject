@@ -19,7 +19,6 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16
-
     #какие файлы можно загружать
     ALLOWED_IMAGE = {"png","jpg","jpeg","gif","webp"}
     ALLOWED_AUDIO = {"mp3", "ogg", "wav"}
@@ -175,6 +174,31 @@ def allowed_file(filename, allowed):
     else:
         return False
 
+# проверяем что цвет в нормальном формате
+def is_valid_color(color):
+    if not color or not isinstance(color, str):
+        return False
+    color = color.strip().lower()
+    if not color.startswith("#"):
+        return False
+    hex_part = color[1:]
+    if len(hex_part) not in (3, 6):
+        return False
+    try:
+        int(hex_part, 16)
+    except ValueError:
+        return False
+    if len(hex_part) == 3:
+        hex_part = hex_part[0]*2 + hex_part[1]*2 + hex_part[2]*2
+    r = int(hex_part[0:2], 16)
+    g = int(hex_part[2:4], 16)
+    b = int(hex_part[4:6], 16)
+    if r > 255 or g > 255 or b > 255:
+        return False
+    return True
+
+
+# сохраняем с рандомным именем
 
 def save_upload(file, allowed):
     # сохраняем с рандомным именем
@@ -466,13 +490,9 @@ def tasks():
         q = q.filter_by(done=False)
     elif filter_by == "done":
         q = q.filter_by(done=True)
-
-    # сначала невыполненные сверху, потом по дате
     spisok = q.order_by(Task.done.asc(), Task.created_at.desc()).all()
-
     total = Task.query.filter_by(user_id=user.id).count()
     done_count = Task.query.filter_by(user_id=user.id, done=True).count()
-
     return render_template(
         "tasks.html",
         user=user,
